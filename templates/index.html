@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bit Chat - Milky Edition</title>
+    <style>
+        :root {
+            --bg-color: #f4f6f8; /* Milky Background */
+            --header-bg: #ffffff;
+            --sent-bg: #eef1f5; /* Light grey/blue for sent */
+            --received-bg: #ffffff; /* White for received */
+            --accent-color: #7c3aed; /* Purple accent */
+            --text-color: #333;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: var(--bg-color); display: flex; justify-content: center; align-items: center; height: 100vh; }
+
+        .chat-container {
+            width: 100%; max-width: 450px; height: 750px;
+            background: var(--bg-color); 
+            display: flex; flex-direction: column; overflow: hidden;
+            position: relative;
+            border-radius: 0; /* Full screen on mobile feel */
+        }
+
+        /* Header */
+        .chat-header {
+            background: var(--header-bg); padding: 15px 20px; 
+            border-bottom: 1px solid #e5e7eb;
+            display: flex; align-items: center; z-index: 10;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        }
+        .avatar { width: 40px; height: 40px; background: #ddd; border-radius: 50%; margin-right: 15px; background-image: linear-gradient(45deg, #7928ca, #ff0080); }
+        .user-info h2 { font-size: 16px; font-weight: 600; color: var(--text-color); }
+        .status { font-size: 12px; color: #888; }
+
+        /* Chat Box */
+        .chat-box {
+            flex: 1; padding: 20px; overflow-y: auto;
+            display: flex; flex-direction: column; gap: 15px;
+        }
+
+        /* Messages */
+        .message-row { display: flex; flex-direction: column; max-width: 85%; position: relative; }
+        .message-row.sent { align-self: flex-end; align-items: flex-end; }
+        .message-row.received { align-self: flex-start; align-items: flex-start; }
+
+        .bubble {
+            padding: 12px 16px; border-radius: 20px; font-size: 14px;
+            line-height: 1.5; word-wrap: break-word; position: relative;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            display: inline-block;
+        }
+        
+        .message-row.sent .bubble { 
+            background-color: var(--sent-bg); color: var(--text-color); 
+            border-bottom-right-radius: 5px; 
+        }
+        .message-row.received .bubble { 
+            background-color: var(--received-bg); color: var(--text-color); 
+            border-bottom-left-radius: 5px; 
+            border: 1px solid #f0f0f0;
+        }
+
+        .timestamp { font-size: 10px; color: #999; margin-top: 6px; display: block; text-align: right; }
+
+        /* Image Styling */
+        .bubble img { 
+            max-width: 100%; max-height: 200px; border-radius: 15px; margin-bottom: 5px; cursor: pointer; 
+            display: block; 
+        }
+        .bubble .caption { margin-top: 5px; }
+
+        /* File Styling */
+        .file-bubble { 
+            display: flex; align-items: center; gap: 12px; min-width: 200px; text-decoration: none; color: inherit;
+        }
+        .file-icon { 
+            width: 45px; height: 45px; background: #f3f4f6; border-radius: 12px; 
+            display: flex; align-items: center; justify-content: center; font-size: 20px;
+            flex-shrink: 0;
+        }
+        .file-info { flex: 1; overflow: hidden; text-align: left; }
+        .file-name { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .file-size { font-size: 11px; color: #666; margin-top: 2px; }
+
+        /* Input Area */
+        .input-area {
+            background: #ffffff; padding: 15px; display: flex; align-items: center; gap: 8px;
+            border-top: 1px solid #e5e7eb;
+        }
+        .icon-btn {
+            background: none; border: none; font-size: 22px; cursor: pointer; color: #888; padding: 5px; transition: color 0.2s;
+        }
+        .icon-btn:hover { color: var(--accent-color); }
+        
+        .message-input {
+            flex: 1; padding: 12px 18px; border-radius: 25px; border: none; outline: none; 
+            font-size: 14px; background-color: #f3f4f6; color: #333;
+        }
+        .send-btn {
+            background: var(--accent-color); border: none; border-radius: 50%; width: 42px; height: 42px;
+            color: white; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center;
+            transition: transform 0.1s;
+        }
+        .send-btn:active { transform: scale(0.95); }
+
+        /* System Message */
+        .system-msg { 
+            align-self: center; font-size: 11px; color: #fff; background: rgba(0,0,0,0.3); 
+            padding: 5px 14px; border-radius: 15px; margin: 10px 0; backdrop-filter: blur(5px);
+        }
+
+        /* Hidden inputs */
+        #file-input, #image-input { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="chat-header">
+        <div class="avatar"></div>
+        <div class="user-info">
+            <h2 id="header-title">Bit Chat</h2>
+            <div class="status" id="connection-status">Connecting...</div>
+        </div>
+    </div>
+
+    <div class="chat-box" id="chat-box">
+        <!-- Messages go here -->
+    </div>
+
+    <div class="input-area">
+        <button class="icon-btn" onclick="document.getElementById('image-input').click()" title="Send Image">🖼️</button>
+        <button class="icon-btn" onclick="document.getElementById('file-input').click()" title="Send File">📎</button>
+        
+        <input type="file" id="image-input" accept="image/*" onchange="handleFileSelect(this, 'image')">
+        <input type="file" id="file-input" onchange="handleFileSelect(this, 'file')">
+
+        <input type="text" id="msg-input" class="message-input" placeholder="Type a message..." disabled>
+        <button class="send-btn" id="send-btn" onclick="sendMessage()" disabled>➤</button>
+    </div>
+</div>
+
+<script>
+    const chatBox = document.getElementById('chat-box');
+    const msgInput = document.getElementById('msg-input');
+    const sendBtn = document.getElementById('send-btn');
+    const statusDiv = document.getElementById('connection-status');
+
+    // --- Helper Functions ---
+
+    function formatBytes(bytes, decimals = 2) {
+        if (!bytes) return '0 Bytes';
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+
+    // Main function to add ANY message (Text, Image, File)
+    function addMessage(data) {
+        const row = document.createElement('div');
+        row.className = `message-row ${data.type}`; // 'sent' or 'received'
+        
+        const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        let bubbleContent = '';
+
+        // 1. Handle System Messages
+        if (data.type === 'system') {
+            row.className = 'system-msg';
+            row.innerText = data.text;
+            chatBox.appendChild(row);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            return;
+        }
+
+        // 2. Handle Images
+        if (data.fileType === 'image') {
+            bubbleContent = `
+                <img src="data:image/jpeg;base64,${data.fileData}" alt="Image" onclick="window.open(this.src)">
+                <span class="timestamp">${time}</span>
+            `;
+        } 
+        // 3. Handle Files
+        else if (data.fileType === 'file') {
+            const dlLink = `data:application/octet-stream;base64,${data.fileData}`;
+            bubbleContent = `
+                <a href="${dlLink}" download="${data.fileName}" class="file-bubble">
+                    <div class="file-icon">📄</div>
+                    <div class="file-info">
+                        <div class="file-name">${data.fileName}</div>
+                        <div class="file-size">${formatBytes(data.fileSize)}</div>
+                    </div>
+                </a>
+                <span class="timestamp">${time}</span>
+            `;
+        } 
+        // 4. Handle Text
+        else {
+            bubbleContent = `${data.text} <span class="timestamp">${time}</span>`;
+        }
+
+        row.innerHTML = `<div class="bubble">${bubbleContent}</div>`;
+        chatBox.appendChild(row);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    // --- Network Logic ---
+
+    // 1. Check Status
+    fetch('/get_status').then(r => r.json()).then(data => {
+        if(data.connected) {
+            statusDiv.innerText = "Online";
+            statusDiv.style.color = "#10b981";
+            msgInput.disabled = false;
+            sendBtn.disabled = false;
+            document.getElementById('header-title').innerText = data.role;
+        } else {
+            statusDiv.innerText = "Offline";
+            addMessage({type: 'system', text: 'Waiting for connection...'});
+        }
+    });
+
+    // 2. Polling Loop
+    setInterval(() => {
+        fetch('/get_messages').then(r => r.json()).then(data => {
+            if(data.messages && data.messages.length > 0) {
+                data.messages.forEach(msg => {
+                    // When receiving, 'type' should be 'received'
+                    msg.type = 'received'; 
+                    addMessage(msg);
+                });
+            }
+        });
+    }, 1000);
+
+    // 3. Send Text
+    function sendMessage() {
+        const text = msgInput.value;
+        if(!text) return;
+        
+        // Send to Python
+        fetch('/send_message', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({type: 'text', text: text})
+        }).then(r => r.json()).then(res => {
+            if(res.status === 'success') {
+                // Add to UI immediately
+                addMessage({type: 'sent', text: text});
+                msgInput.value = '';
+            }
+        });
+    }
+
+    // 4. Send File/Image
+    function handleFileSelect(input, fileType) {
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                const base64 = e.target.result.split(',')[1]; // Remove header
+                
+                const payload = {
+                    type: fileType, // 'image' or 'file'
+                    fileType: fileType,
+                    fileName: file.name,
+                    fileSize: file.size,
+                    fileData: base64
+                };
+
+                fetch('/send_message', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                }).then(r => r.json()).then(res => {
+                    if(res.status === 'success') {
+                        // Add to UI immediately as 'sent'
+                        addMessage({type: 'sent', ...payload});
+                    }
+                });
+            };
+            reader.readAsDataURL(file);
+        }
+        input.value = ''; // Reset input
+    }
+
+    // Enter key handler
+    msgInput.addEventListener("keypress", function(event) {
+        if (event.key === "Enter") sendMessage();
+    });
+</script>
+
+</body>
+</html>
